@@ -1,0 +1,308 @@
+C51 COMPILER V9.01   PERIPHERAL_MAIN                                                       07/13/2016 17:26:59 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE PERIPHERAL_MAIN
+OBJECT MODULE PLACED IN peripheral_main.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE peripheral_main.c LARGE BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include <reg51.h>
+   2          
+   3          void SendCharHex(char x)
+   4          {
+   5   1              unsigned char low;
+   6   1              unsigned char high;
+   7   1              low = x&0x0f;
+   8   1              high = (x>>4)&0x0f;
+   9   1              if (low<10) low = '0'+low;
+  10   1              else low = 'A'+low-10;
+  11   1              if (high<10) high = '0'+high;
+  12   1              else high = 'A'+high-10;
+  13   1              SBUF=high;
+  14   1              while(!TI);
+  15   1              TI=0;
+  16   1              SBUF=low;
+  17   1              while(!TI);
+  18   1              TI=0;   
+  19   1      }
+  20          
+  21          
+  22          #include "GeneralAnswer0624.h"
+  23          #define This_UUID 0x1114
+  24          
+  25          #define Password 0x3463
+  26          
+  27          unsigned int R;//10位绝对值，6位数量级
+  28          unsigned int order;//8位命令
+  29          unsigned int x;
+  30          int nearistp;
+  31          #include "Find_Struct.h"
+  32          #include "link.h"
+  33          
+  34          #define Num_Port 1
+  35          #define Port0_Sendp P2^0
+  36          #define Port0_Receivep  P0^7
+  37          #include "Communication_Profile0601.h"
+  38          #include "Communication_Receive_Central0601.h"
+  39          #include "Communication_Send_Central0601.h"
+  40          
+  41          char Str[30];
+  42          int Strlen;
+  43          
+  44          void DelaySelfCheck()
+  45          {
+  46   1              int i, j;
+  47   1              for (i=0; i<200; i++)
+  48   1              {
+  49   2                      for (j=0 ; j<200; j++);
+  50   2              }
+  51   1      }
+  52          void UsartConfiguration();
+  53          
+  54          void main()
+  55          {
+C51 COMPILER V9.01   PERIPHERAL_MAIN                                                       07/13/2016 17:26:59 PAGE 2   
+
+  56   1              char mstate;
+  57   1              UsartConfiguration();
+  58   1              //P0 = 0;
+  59   1              //P1 = 0;
+  60   1              //P2 = 0;
+  61   1              //P3 = 0;
+  62   1              Initialize_Communication();
+  63   1              while (1)
+  64   1              {
+  65   2              SendCharHex(0);
+  66   2              }
+  67   1              while (1)
+  68   1              {
+  69   2                       while (Receive_Port[0]() == 1);
+  70   2                       mstate = ReceiveM_Port(0);
+  71   2                       if (mstate != Receive_Finished)
+  72   2                       {
+  73   3                               continue;
+  74   3                       }
+  75   2                       if (ReceiveOrder == R_Cmd_GoStart) 
+  76   2                       {
+  77   3                               continue; //回到主进程
+  78   3                       }
+  79   2                       SendData = ReceiveData;
+  80   2                       SendOrder = ReceiveOrder;
+  81   2                       SendM_Port(0);
+  82   2                                                                                                                                                                                        
+  83   2                       if (ReceiveOrder == R_Cmd_Ask)//回复设备型号
+  84   2                       {
+  85   3                           SendData = This_UUID;//编号
+  86   3                               SendOrder = Unit_Resistance;//说明是电阻型的
+  87   3                               SendM_Port(0);
+  88   3                       }
+  89   2                       else if (ReceiveOrder == R_Cmd_Check)//启动自检程序
+  90   2                       {
+  91   3                               int i, p;
+  92   3                               if(ReceiveData == Password)
+  93   3                               {
+  94   4                                       SendOrder = T_Cmd_PasswordAccepted;
+  95   4                                       SendData = 0;
+  96   4                                       SendM_Port(0);
+  97   4                               }
+  98   3                               else
+  99   3                               {
+ 100   4                                       SendOrder = T_Cmd_PasswordWrong;
+ 101   4                                       SendData = 0;
+ 102   4                                       SendM_Port(0);
+ 103   4                                       continue;
+ 104   4                               }
+ 105   3                               P0 = 1<<7;
+ 106   3                               P1 = 0;
+ 107   3                               P2 = 1;
+ 108   3                               P3 = 3;
+ 109   3                               p=1;
+ 110   3                               for (i=0; i<7; i++)
+ 111   3                               {
+ 112   4                                      P0 |= p;
+ 113   4                                      DelaySelfCheck();
+ 114   4                                      p<<=1;
+ 115   4                                      P0 = 1<<7;
+ 116   4                                      DelaySelfCheck();
+ 117   4                               }
+C51 COMPILER V9.01   PERIPHERAL_MAIN                                                       07/13/2016 17:26:59 PAGE 3   
+
+ 118   3                               p=1;
+ 119   3                               for (i=0; i<8; i++)
+ 120   3                               {
+ 121   4                                      P1 |= p;
+ 122   4                                      DelaySelfCheck();
+ 123   4                                      p<<=1;
+ 124   4                                      P1 = 0;
+ 125   4                                      DelaySelfCheck();
+ 126   4                               }
+ 127   3                               p=0x04;
+ 128   3                               for (i=0; i<6; i++)
+ 129   3                               {
+ 130   4                                      P3 |= p;
+ 131   4                                      DelaySelfCheck();
+ 132   4                                      p<<=1;
+ 133   4                                      P3 = 3;
+ 134   4                                      DelaySelfCheck();
+ 135   4                               }
+ 136   3                               p=2;
+ 137   3                               for (i=0; i<7; i++)
+ 138   3                               {
+ 139   4                                      P2 |= p;
+ 140   4                                      DelaySelfCheck();
+ 141   4                                      p<<=1;
+ 142   4                                      P2 = 1;
+ 143   4                                      DelaySelfCheck();
+ 144   4                               }
+ 145   3                       }
+ 146   2                       else if (ReceiveOrder == R_Cmd_Link) //连接8引脚电路
+ 147   2                       {
+ 148   3                               char a, b;
+ 149   3                   ClearLink();
+ 150   3                               a = ReceiveData & 0x0f;        //解释连接方式
+ 151   3                               b = (ReceiveData>>4) & 0x0f;
+ 152   3                               if ((a==1 && b==1) || (a==2 && b==2))
+ 153   3                               {
+ 154   4                                        SendOrder = T_Cmd_LinkWrong;
+ 155   4                                        SendData = 0;
+ 156   4                                        SendM_Port(0);
+ 157   4                                        continue;
+ 158   4                               }
+ 159   3                               Link(a,b);
+ 160   3                               SendOrder = T_Cmd_LinkFinished;
+ 161   3                               SendData = 0;
+ 162   3                               SendM_Port(0);
+ 163   3                       }
+ 164   2                       else if (ReceiveOrder == Unit_Resistance)      //是电阻的单位
+ 165   2                       {
+ 166   3                               x = ReceiveData;
+ 167   3                               Recognize_Resistance(x);
+ 168   3                               nearistp = Find_Nearist(x);
+ 169   3                               SendData = SListR[nearistp];
+ 170   3                               SendOrder = Unit_Resistance;
+ 171   3                               SendM_Port(0);
+ 172   3                               while (Receive_Port[0]() == 1);  //等待无限长时间，为保证安全，在进行新操作前，中控机需要发送GoStart指
+             -令
+ 173   3                               if (ReceiveM_Port(0) != Receive_Finished) continue;
+ 174   3                               if (ReceiveOrder == R_Cmd_GoStart) continue; //回到主进程 
+ 175   3                               if (ReceiveOrder == R_Cmd_FindConfirm) //确认
+ 176   3                               Excute(nearistp);
+ 177   3                       }
+ 178   2                       else //未知命令
+C51 COMPILER V9.01   PERIPHERAL_MAIN                                                       07/13/2016 17:26:59 PAGE 4   
+
+ 179   2                       {
+ 180   3                               SendOrder = T_Cmd_UnkownCmd;
+ 181   3                               SendData = 0;
+ 182   3                               SendM_Port(0);
+ 183   3                       } 
+ 184   2              }       
+ 185   1      }
+ 186          unsigned char CharToHex(char high, char low)
+ 187          {
+ 188   1              unsigned char x; 
+ 189   1              if (high >= '0' && high <= '9')
+ 190   1              {
+ 191   2                      x = (high - '0')<<4;
+ 192   2              }
+ 193   1              else if (high >= 'a' && high <= 'f')
+ 194   1              {
+ 195   2                      x = (high - 'a' + 10)<<4;
+ 196   2              }
+ 197   1              else if (high >= 'A' && high <= 'F')
+ 198   1              {
+ 199   2                      x = (high - 'A' + 10)<<4;
+ 200   2              }
+ 201   1              else return 0;
+ 202   1              if (low >= '0' && low <= '9')
+ 203   1              {
+ 204   2                      x |= (low - '0');
+ 205   2              }
+ 206   1              else if (low >= 'a' && low <= 'f')
+ 207   1              {
+ 208   2                      x |= (low - 'a' + 10);
+ 209   2              }
+ 210   1              else if (low >= 'A' && low <= 'F')
+ 211   1              {
+ 212   2                      x |= (low - 'A' + 10);
+ 213   2              }
+ 214   1              else return 0;
+ 215   1              return x;       
+ 216   1      }
+ 217          
+ 218          void DoString() 
+ 219          {
+ 220   1              if (Strlen == 6){
+ 221   2                      SendCharHex(0);
+ 222   2                      ReceiveOrder = CharToHex(Str[4],Str[5]);
+ 223   2                      ReceiveData = CharToHex(Str[0],Str[1])<<4 + CharToHex(Str[2],Str[3]); 
+ 224   2                      x = ReceiveData;
+ 225   2                      //Recognize_Resistance(x);
+ 226   2                      nearistp = Find_Nearist(x);
+ 227   2                      SendData = SListR[nearistp];
+ 228   2                      SendOrder = Unit_Resistance;
+ 229   2                      SendCharHex(SendData>>4 & 0xff);
+ 230   2                      SendCharHex(SendData & 0xff);
+ 231   2                      SendCharHex(SendOrder & 0xff);
+ 232   2                      SendCharHex(0);
+ 233   2              }
+ 234   1      }
+ 235          void DoUSART(unsigned char receiveData)
+ 236          {
+ 237   1              switch (receiveData)
+ 238   1              {                                                        
+ 239   2                      case '$': //刷新Str 且 结束Str输入
+ 240   2                              if (Strlen != 0)
+C51 COMPILER V9.01   PERIPHERAL_MAIN                                                       07/13/2016 17:26:59 PAGE 5   
+
+ 241   2                              {
+ 242   3                                      DoString();
+ 243   3                                      Strlen = 0;
+ 244   3                              }
+ 245   2                              Strlen = 0;
+ 246   2                              break;
+ 247   2                      default:
+ 248   2                              Str[Strlen] = receiveData;
+ 249   2                              Strlen ++;
+ 250   2                              break;
+ 251   2              }
+ 252   1      }
+ 253          void UsartConfiguration()
+ 254          {
+ 255   1              SCON=0X50;                      //设置为工作方式1
+ 256   1              TMOD=0X20;                      //设置计数器工作方式2
+ 257   1              PCON=0X80;                      //波特率加倍
+ 258   1              TH1=0XFA;
+ 259   1              //TH1=0XF3;                 //计数器初始值设置，注意波特率是4800的
+ 260   1              //TL1=0XF3;
+ 261   1              TL1=0XFA;                        //调成了9600波特率
+ 262   1              ES=1;                                           //打开接收中断
+ 263   1              EA=1;                                           //打开总中断
+ 264   1              TR1=1;                                      //打开计数器
+ 265   1              ET1=0;
+ 266   1      }
+ 267          void Usart() interrupt 4
+ 268          {
+ 269   1              unsigned char receiveData;
+ 270   1              receiveData=SBUF; //出去接收到的数据
+ 271   1              RI = 0;           //清除接收中断标志位
+ 272   1              DoUSART(receiveData);
+ 273   1              //SBUF=receiveData; //将接收到的数据放入到发送寄存器
+ 274   1              //while(!TI);             //等待发送数据完成
+ 275   1              //TI=0;                   //清除发送完成标志位
+ 276   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   4422    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   1016      61
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

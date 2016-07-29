@@ -1,0 +1,4 @@
+"STARTUP.obj",
+"peripheral_main.obj" 
+TO "testing" 
+RAMSIZE(256) 
